@@ -12,6 +12,7 @@ from jinja2 import Environment, PackageLoader
 from binary import FixedLengthTypes, FixedListTypes, FixedEntryListTypes, FixedMapTypes
 from java import java_types_encode, java_types_decode
 from cs import cs_types_encode, cs_types_decode, cs_escape_keyword
+from go import go_types_encode, go_types_decode
 
 
 def java_name(type_name):
@@ -19,6 +20,10 @@ def java_name(type_name):
 
 
 def cs_name(type_name):
+    return "".join([capital(part) for part in type_name.replace("(", "").replace(")", "").split("_")])
+
+
+def go_name(type_name):
     return "".join([capital(part) for part in type_name.replace("(", "").replace(")", "").split("_")])
 
 
@@ -191,7 +196,7 @@ class SupportedLanguages(Enum):
     CS = 'cs'
     # PY = 'py'
     # TS = 'ts'
-    # GO = 'go'
+    GO = 'go'
 
 
 codec_output_directories = {
@@ -200,7 +205,7 @@ codec_output_directories = {
     SupportedLanguages.CS: 'Hazelcast.Net/Hazelcast.Client.Protocol.Codec/',
     # SupportedLanguages.PY: 'hazelcast/protocol/codec/',
     # SupportedLanguages.TS: 'src/codec/',
-    # SupportedLanguages.GO: 'internal/proto/'
+    SupportedLanguages.GO: 'internal/proto/',
 }
 
 custom_codec_output_directories = {
@@ -209,7 +214,7 @@ custom_codec_output_directories = {
     SupportedLanguages.CS: 'Hazelcast.Net/Hazelcast.Client.Protocol.Codec.Custom/',
     # SupportedLanguages.PY: 'hazelcast/protocol/codec/',
     # SupportedLanguages.TS: 'src/codec/',
-    # SupportedLanguages.GO: 'internal/proto/'
+    SupportedLanguages.GO: 'internal/proto/custom',
 }
 
 file_extensions = {
@@ -218,29 +223,34 @@ file_extensions = {
     SupportedLanguages.CS: 'cs',
     # SupportedLanguages.PY: 'py',
     # SupportedLanguages.TS: 'ts',
-    # SupportedLanguages.GO: 'go'
+    SupportedLanguages.GO: 'go',
 }
 
 language_specific_funcs = {
     'lang_types_encode': {
         SupportedLanguages.JAVA: java_types_encode,
         SupportedLanguages.CS: cs_types_encode,
+        SupportedLanguages.GO: go_types_encode,
     },
     'lang_types_decode': {
         SupportedLanguages.JAVA: java_types_decode,
         SupportedLanguages.CS: cs_types_decode,
+        SupportedLanguages.GO: go_types_decode,
     },
     'lang_name': {
         SupportedLanguages.JAVA: java_name,
         SupportedLanguages.CS: cs_name,
+        SupportedLanguages.GO: go_name,
     },
     'param_name': {
         SupportedLanguages.JAVA: param_name,
         SupportedLanguages.CS: param_name,
+        SupportedLanguages.GO: param_name,
     },
     'escape_keyword': {
         SupportedLanguages.JAVA: lambda x: x,
         SupportedLanguages.CS: cs_escape_keyword,
+        SupportedLanguages.GO: lambda x: x,
     },
 }
 
