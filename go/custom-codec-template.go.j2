@@ -7,9 +7,9 @@
         MapCodec.encode{% if param.nullable  %}Nullable{% endif %}(clientMessage, {{ param_name(codec.name)}}.{% if param.type == 'boolean' %}is{% else %}get{% endif %}{{ param.name|capital }}(), {{ key_type(lang_name, param.type) }}.encode, {{ value_type(lang_name, param.type) }}.encode)
     {%- else -%}
         {%- if param.nullable  -%}
-            CodecUtil.encodeNullable(clientMessage, {{ param_name(codec.name)}}.{% if param.type == 'boolean' %}is{% else %}get{% endif %}{{ param.name|capital }}(), {{ lang_name(param.type) }}.encode)
+            CodecUtil.encodeNullable(clientMessage, {{ param_name(codec.name)}}.{% if param.type == 'boolean' %}is{% else %}{% endif %}{{ param.name }}, {{ lang_name(param.type) }}.encode)
         {%- else -%}
-            {{ lang_name(param.type) }}Codec.encode(clientMessage, {{ param_name(codec.name)}}.{% if param.type == 'boolean' %}is{% else %}get{% endif %}{{ param.name|capital }}())
+            {{ lang_name(param.type) }}Codec.encode(clientMessage, {{ param_name(codec.name)}}.{% if param.type == 'boolean' %}is{% else %}{% endif %}{{ param.name }})
         {%- endif %}
     {% endif %}
 {%- endmacro %}
@@ -71,15 +71,15 @@ const (
     {% endfor %}
 )
 
-func {{ codec.name|capital }}Encode(clientMessage ClientMessage, {{ param_name(codec.name) }} {{ lang_types_encode(codec.name) }}) {
-        clientMessage.add(BeginFrame.copy())
+func {{ codec.name|capital }}Encode(clientMessage bufutil.ClientMessagex, {{ param_name(codec.name) }} {{ lang_types_encode(codec.name) }}) {
+        clientMessage.Add(bufutil.BeginFrame)
         {% for param in fixed_params(codec.params) %}
         {% if loop.first %}
-        initialFrame := ClientMessage.Frame(bytes.NewBuffer(InitialFrameSize))
+        initialFrame := bufutil.Frame{make([]byte, {{ codec.name|capital }}InitialFrameSize), bufutil.UnfragmentedMessage}
         {% endif %}
-        encode{{ param.type|capital }}(initialFrame.content, {{(param.name)|capital}}FieldOffset, {{ param_name(codec.name)}}.{% if param.type == 'boolean' %}is{% else %}get{% endif %}{{ param.name|capital }}())
+        bufutil.Encode{{ param.type|capital }}(initialFrame.Content, {{ codec.name|capital }}{{ (param.name)|capital }}FieldOffset, {{ param_name(codec.name)}}.{% if param.type == 'boolean' %}is{% else %}{% endif %}{{ param.name }})
         {% if loop.last %}
-        clientMessage.add(initialFrame)
+        clientMessage.Add(initialFrame)
         {% endif %}
         {% endfor %}
         {% for param in var_size_params(codec.params) %}
@@ -88,17 +88,17 @@ func {{ codec.name|capital }}Encode(clientMessage ClientMessage, {{ param_name(c
         {{ encode_var_sized(param) }}
         {% endfor %}
 
-        clientMessage.add(EndFrame.copy())
+        clientMessage.Add(bufutil.EndFrame)
     }
-
-func {{ codec.name|capital }}Decode(iterator ClientMessage.ForwardFrameIterator)  *{{ lang_types_decode(codec.name) }}  {
+                                            {# iterator ClientMessage.ForwardFrameIterator #}
+func {{ codec.name|capital }}Decode(iterator bufutil.ClientMessagex)  *{{ lang_types_decode(codec.name) }}  {
         // begin frame
-        iterator.next()
+        iterator.Next()
         {% for param in fixed_params(codec.params) %}
         {% if loop.first %}
-        initialFrame := iterator.next()
+        initialFrame := iterator.Next()
         {% endif %}
-        {{ param.name }} := decode{{ param.type|capital }}(initialFrame.content, {{ (param.name)|capital }}FieldOffset)
+        {{ param.name }} := bufutil.Decode{{ param.type|capital }}(initialFrame.Content, {{ codec.name|capital }}{{ (param.name)|capital }}FieldOffset)
         {% endfor %}
         {% for param in var_size_params(codec.params) %}
         {% if loop.first %}
@@ -106,7 +106,7 @@ func {{ codec.name|capital }}Decode(iterator ClientMessage.ForwardFrameIterator)
         {{ param.name }} := {{ decode_var_sized(param) }}
         {% endfor %}
 
-        fastForwardToEndFrame(iterator)
+        bufutil.fastForwardToEndFrame(iterator)
 
         {% if codec.returnWithFactory %}
         return CustomTypeFactory.create{{ codec.name }}({% for param in codec.params %}{{ param.name }}{% if not loop.last %}, {% endif %}{% endfor %})
